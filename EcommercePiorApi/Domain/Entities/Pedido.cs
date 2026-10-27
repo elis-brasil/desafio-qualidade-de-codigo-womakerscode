@@ -1,3 +1,5 @@
+using PiorEcommerceDoMundo.Domain.Enums;
+
 namespace PiorEcommerceDoMundo.Domain.Entities;
 
 public class Pedido
@@ -7,9 +9,10 @@ public class Pedido
     public string ClienteEmail { get; set; }
     public DateTime DataPedido { get; set; }
 
-    // status controlado por string solta, sem enum: "Pendente", "Pago", "Falhou", "Enviado"
-    public string Status { get; set; }
+    // Status gerenciado por enum fortemente tipado (Problema 13)
+    public StatusPedido Status { get; set; } = StatusPedido.Pendente;
     public decimal ValorTotal { get; set; }
+    public decimal ValorDesconto { get; set; }
     public string FormaPagamento { get; set; }
     public string CodigoRastreio { get; set; }
     public List<ItemPedido> Itens { get; set; } = new();

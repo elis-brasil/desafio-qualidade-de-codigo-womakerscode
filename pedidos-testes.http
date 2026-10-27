@@ -1,0 +1,61 @@
+@baseUrl = http://localhost:5000
+
+### 1. Listar todos os produtos (verificar estoque inicial)
+GET {{baseUrl}}/api/produtos
+Accept: application/json
+
+### 2. Criar um novo pedido - Cliente comum (sem desconto)
+POST {{baseUrl}}/api/pedidos
+Content-Type: application/json
+
+{
+  "clienteNome": "Maria Silva",
+  "clienteEmail": "maria.silva@email.com",
+  "formaPagamento": "pix",
+  "itens": [
+    {
+      "produtoId": 1,
+      "quantidade": 2
+    }
+  ]
+}
+
+### 3. Criar pedido com valor acima de R$ 500 (Desconto de 10% - Strategy Valor Alto)
+POST {{baseUrl}}/api/pedidos
+Content-Type: application/json
+
+{
+  "clienteNome": "Carlos Souza",
+  "clienteEmail": "carlos@email.com",
+  "formaPagamento": "pix",
+  "itens": [
+    {
+      "produtoId": 2,
+      "quantidade": 2
+    }
+  ]
+}
+
+### 4. Criar pedido com cliente VIP (Desconto de 20% - Strategy Cliente VIP)
+POST {{baseUrl}}/api/pedidos
+Content-Type: application/json
+
+{
+  "clienteNome": "Beatriz VIP",
+  "clienteEmail": "beatriz.vip@empresa.com",
+  "formaPagamento": "pix",
+  "itens": [
+    {
+      "produtoId": 1,
+      "quantidade": 1
+    }
+  ]
+}
+
+### 5. Listar todos os pedidos criados
+GET {{baseUrl}}/api/pedidos
+Accept: application/json
+
+### 6. Buscar pedido por Id
+GET {{baseUrl}}/api/pedidos/1
+Accept: application/json
