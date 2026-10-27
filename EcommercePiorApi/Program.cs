@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using PiorEcommerceDoMundo;
+using PiorEcommerceDoMundo.Domain.Entities;
+using PiorEcommerceDoMundo.Infrastructure.Data;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);

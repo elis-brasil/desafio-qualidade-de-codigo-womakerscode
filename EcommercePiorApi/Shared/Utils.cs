@@ -1,4 +1,4 @@
-namespace PiorEcommerceDoMundo;
+namespace PiorEcommerceDoMundo.Shared;
 
 // classe utilitaria "faz-tudo": validacao, log e geracao de codigo no mesmo lugar
 public static class Utils
