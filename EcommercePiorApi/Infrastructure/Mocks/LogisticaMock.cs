@@ -1,4 +1,7 @@
-namespace PiorEcommerceDoMundo;
+using PiorEcommerceDoMundo.Domain.Entities;
+using PiorEcommerceDoMundo.Shared;
+
+namespace PiorEcommerceDoMundo.Infrastructure.Mocks;
 
 // "integracao" com logistica que na verdade so espera um pouco e devolve um codigo aleatorio
 public static class LogisticaMock

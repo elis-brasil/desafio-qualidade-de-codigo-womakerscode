@@ -1,28 +1,37 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PiorEcommerceDoMundo.Application.DTOs;
+using PiorEcommerceDoMundo.Domain.Entities;
+using PiorEcommerceDoMundo.Infrastructure.Data;
+using PiorEcommerceDoMundo.Infrastructure.Mocks;
+using PiorEcommerceDoMundo.Shared;
 
-namespace PiorEcommerceDoMundo;
+namespace PiorEcommerceDoMundo.Api.Controllers;
 
 // um unico controller cuidando de produtos, estoque, pedidos, pagamento e logistica.
 // nada de camadas, nada de injecao de dependencia, nada de SOLID. de proposito.
 [ApiController]
 public class EcommerceController : ControllerBase
 {
+    private readonly AppDbContext _db;
+
+    public EcommerceController(AppDbContext db)
+    {
+        _db = db;
+    }
     // ==================== PRODUTOS (CRUD) ====================
 
     [HttpGet("api/produtos")]
     public IActionResult ListarProdutos()
     {
-        var db = new AppDbContext();
-        var lista = db.Produtos.ToList();
+        var lista = _db.Produtos.ToList();
         return Ok(lista);
     }
 
     [HttpGet("api/produtos/{id}")]
     public IActionResult BuscarProduto(int id)
     {
-        var db = new AppDbContext();
-        var produto = db.Produtos.Find(id);
+        var produto = _db.Produtos.Find(id);
         if (produto == null) return NotFound();
         return Ok(produto);
     }
@@ -39,9 +48,8 @@ public class EcommerceController : ControllerBase
             return BadRequest("preco invalido");
         }
 
-        var db = new AppDbContext();
-        db.Produtos.Add(produto);
-        db.SaveChanges();
+        _db.Produtos.Add(produto);
+        _db.SaveChanges();
         Utils.Log("Produto criado: " + produto.Nome);
         return Ok(produto);
     }
@@ -49,8 +57,7 @@ public class EcommerceController : ControllerBase
     [HttpPut("api/produtos/{id}")]
     public IActionResult AtualizarProduto(int id, [FromBody] Produto produto)
     {
-        var db = new AppDbContext();
-        var existente = db.Produtos.Find(id);
+        var existente = _db.Produtos.Find(id);
         if (existente == null) return NotFound();
 
         existente.Nome = produto.Nome;
@@ -58,19 +65,18 @@ public class EcommerceController : ControllerBase
         existente.Preco = produto.Preco;
         existente.QuantidadeEstoque = produto.QuantidadeEstoque;
         existente.Ativo = produto.Ativo;
-        db.SaveChanges();
+        _db.SaveChanges();
         return Ok(existente);
     }
 
     [HttpDelete("api/produtos/{id}")]
     public IActionResult DeletarProduto(int id)
     {
-        var db = new AppDbContext();
-        var existente = db.Produtos.Find(id);
+        var existente = _db.Produtos.Find(id);
         if (existente == null) return NotFound();
 
-        db.Produtos.Remove(existente);
-        db.SaveChanges();
+        _db.Produtos.Remove(existente);
+        _db.SaveChanges();
         return Ok();
     }
 
@@ -80,8 +86,7 @@ public class EcommerceController : ControllerBase
     public IActionResult ListarEstoque()
     {
         // logica praticamente igual a ListarProdutos, copiada e colada aqui
-        var db = new AppDbContext();
-        var lista = db.Produtos.ToList();
+        var lista = _db.Produtos.ToList();
         var resultado = new List<object>();
         foreach (var p in lista)
         {
@@ -93,12 +98,11 @@ public class EcommerceController : ControllerBase
     [HttpPost("api/estoque/reabastecer/{produtoId}/{quantidade}")]
     public IActionResult ReabastecerEstoque(int produtoId, int quantidade)
     {
-        var db = new AppDbContext();
-        var produto = db.Produtos.Find(produtoId);
+        var produto = _db.Produtos.Find(produtoId);
         if (produto == null) return NotFound();
 
         produto.QuantidadeEstoque = produto.QuantidadeEstoque + quantidade;
-        db.SaveChanges();
+        _db.SaveChanges();
         Utils.Log("Estoque reabastecido produto " + produtoId);
         return Ok(produto);
     }
@@ -121,7 +125,6 @@ public class EcommerceController : ControllerBase
             return BadRequest("pedido sem itens");
         }
 
-        var db = new AppDbContext();
 
         var pedido = new Pedido();
         pedido.ClienteNome = request.ClienteNome;
@@ -135,7 +138,7 @@ public class EcommerceController : ControllerBase
 
         foreach (var itemReq in request.Itens)
         {
-            var produto = db.Produtos.Find(itemReq.ProdutoId);
+            var produto = _db.Produtos.Find(itemReq.ProdutoId);
             if (produto == null)
             {
                 return BadRequest("produto " + itemReq.ProdutoId + " nao encontrado");
@@ -173,27 +176,27 @@ public class EcommerceController : ControllerBase
 
         pedido.ValorTotal = total;
 
-        db.Pedidos.Add(pedido);
-        db.SaveChanges(); // ja salva o pedido e o estoque debitado antes mesmo de saber se o pagamento passa
+        _db.Pedidos.Add(pedido);
+        _db.SaveChanges(); // ja salva o pedido e o estoque debitado antes mesmo de saber se o pagamento passa
 
         bool pagamentoOk = PagamentoMock.ProcessarPagamento(total, request.FormaPagamento);
 
         if (!pagamentoOk)
         {
             pedido.Status = "Falhou";
-            db.SaveChanges();
+            _db.SaveChanges();
             Utils.Log("Pagamento falhou pedido " + pedido.Id);
             // estoque ja foi debitado la em cima e NUNCA eh estornado se o pagamento falhar (bug conhecido)
             return BadRequest("pagamento recusado");
         }
 
         pedido.Status = "Pago";
-        db.SaveChanges();
+        _db.SaveChanges();
 
         var codigoRastreio = LogisticaMock.EnviarAsync(pedido).Result; // chamada assincrona usada de forma bloqueante
         pedido.CodigoRastreio = codigoRastreio;
         pedido.Status = "Enviado";
-        db.SaveChanges();
+        _db.SaveChanges();
 
         Utils.Log("Pedido " + pedido.Id + " criado com sucesso");
 
@@ -203,16 +206,14 @@ public class EcommerceController : ControllerBase
     [HttpGet("api/pedidos")]
     public IActionResult ListarPedidos()
     {
-        var db = new AppDbContext();
-        var lista = db.Pedidos.Include(p => p.Itens).ToList();
+        var lista = _db.Pedidos.Include(p => p.Itens).ToList();
         return Ok(lista);
     }
 
     [HttpGet("api/pedidos/{id}")]
     public IActionResult BuscarPedido(int id)
     {
-        var db = new AppDbContext();
-        var pedido = db.Pedidos.Include(p => p.Itens).FirstOrDefault(p => p.Id == id);
+        var pedido = _db.Pedidos.Include(p => p.Itens).FirstOrDefault(p => p.Id == id);
         if (pedido == null) return NotFound();
         return Ok(pedido);
     }
@@ -222,20 +223,19 @@ public class EcommerceController : ControllerBase
     [HttpPost("api/pagamentos/reprocessar/{pedidoId}")]
     public IActionResult ReprocessarPagamento(int pedidoId)
     {
-        var db = new AppDbContext();
-        var pedido = db.Pedidos.Include(p => p.Itens).FirstOrDefault(p => p.Id == pedidoId);
+        var pedido = _db.Pedidos.Include(p => p.Itens).FirstOrDefault(p => p.Id == pedidoId);
         if (pedido == null) return NotFound();
 
         bool ok = PagamentoMock.ProcessarPagamento(pedido.ValorTotal, pedido.FormaPagamento);
         if (!ok)
         {
             pedido.Status = "Falhou";
-            db.SaveChanges();
+            _db.SaveChanges();
             return BadRequest("pagamento recusado novamente");
         }
 
         pedido.Status = "Pago";
-        db.SaveChanges();
+        _db.SaveChanges();
         return Ok(pedido);
     }
 
@@ -244,14 +244,13 @@ public class EcommerceController : ControllerBase
     [HttpPost("api/logistica/reenviar/{pedidoId}")]
     public IActionResult ReenviarLogistica(int pedidoId)
     {
-        var db = new AppDbContext();
-        var pedido = db.Pedidos.FirstOrDefault(p => p.Id == pedidoId);
+        var pedido = _db.Pedidos.FirstOrDefault(p => p.Id == pedidoId);
         if (pedido == null) return NotFound();
 
         var codigo = LogisticaMock.EnviarAsync(pedido).Result;
         pedido.CodigoRastreio = codigo;
         pedido.Status = "Enviado";
-        db.SaveChanges();
+        _db.SaveChanges();
         return Ok(pedido);
     }
 }
