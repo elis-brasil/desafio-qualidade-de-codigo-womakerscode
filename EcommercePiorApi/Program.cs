@@ -1,5 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using PiorEcommerceDoMundo.Domain.Entities;
+using PiorEcommerceDoMundo.Infrastructure;
 using PiorEcommerceDoMundo.Infrastructure.Data;
 using System.Text.Json.Serialization;
 
@@ -7,32 +6,25 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
-    // gambiarra pra nao quebrar quando serializar Pedido -> Itens -> Pedido (referencia ciclica)
+    // TODO: remover quando todas as respostas usarem DTOs (problema 5)
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddInfrastructure(builder.Configuration);
+// Cada dev registra aqui o seu dominio com UMA linha, ex: builder.Services.AddProdutos();
+
 var app = builder.Build();
 
-// cria o banco e ja popula uns produtos, tudo direto aqui no Program.cs mesmo
-using (var db = new AppDbContext())
+using (var scope = app.Services.CreateScope())
 {
-    db.Database.EnsureCreated();
-
-    if (!db.Produtos.Any())
-    {
-        db.Produtos.Add(new Produto { Nome = "Camiseta", Descricao = "Camiseta basica", Preco = 49.90m, QuantidadeEstoque = 100, Ativo = true });
-        db.Produtos.Add(new Produto { Nome = "Tenis", Descricao = "Tenis esportivo", Preco = 299.90m, QuantidadeEstoque = 50, Ativo = true });
-        db.Produtos.Add(new Produto { Nome = "Bone", Descricao = "Bone ajustavel", Preco = 39.90m, QuantidadeEstoque = 200, Ativo = true });
-        db.Produtos.Add(new Produto { Nome = "Mochila", Descricao = "Mochila para notebook", Preco = 159.90m, QuantidadeEstoque = 30, Ativo = true });
-        db.SaveChanges();
-    }
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    DbSeeder.Seed(db);
 }
 
 app.UseSwagger();
 app.UseSwaggerUI();
-
 app.MapControllers();
 
 app.Run();
