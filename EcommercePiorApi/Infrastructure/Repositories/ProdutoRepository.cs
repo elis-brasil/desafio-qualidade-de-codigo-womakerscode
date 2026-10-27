@@ -19,7 +19,7 @@ public class ProdutoRepository : IProdutoRepository
         return _db.Produtos.ToListAsync();
     }
 
-    public async Task<Produto> ObterPorIdAsync(int id)
+    public async Task<Produto?> ObterPorIdAsync(int id)
     {
         return await _db.Produtos.FindAsync(id);
     }

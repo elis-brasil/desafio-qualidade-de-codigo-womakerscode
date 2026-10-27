@@ -131,27 +131,6 @@ public class EcommerceController : ControllerBase
         return Ok(pedido);
     }
 
-    // ==================== PAGAMENTO (endpoint separado, mas com logica duplicada do CriarPedido) ====================
-
-    [HttpPost("api/pagamentos/reprocessar/{pedidoId}")]
-    public IActionResult ReprocessarPagamento(int pedidoId)
-    {
-        var pedido = _db.Pedidos.Include(p => p.Itens).FirstOrDefault(p => p.Id == pedidoId);
-        if (pedido == null) return NotFound();
-
-        bool ok = PagamentoMock.ProcessarPagamento(pedido.ValorTotal, pedido.FormaPagamento);
-        if (!ok)
-        {
-            pedido.Status = "Falhou";
-            _db.SaveChanges();
-            return BadRequest("pagamento recusado novamente");
-        }
-
-        pedido.Status = "Pago";
-        _db.SaveChanges();
-        return Ok(pedido);
-    }
-
     // ==================== LOGISTICA (idem, copiado do fluxo de criar pedido) ====================
 
     [HttpPost("api/logistica/reenviar/{pedidoId}")]
