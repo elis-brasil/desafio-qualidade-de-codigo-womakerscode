@@ -27,6 +27,7 @@ public class EstoqueService : IEstoqueService
         ValidarQuantidade(quantidade);
         var produto = await BuscarOuFalharAsync(produtoId);
 
+        if (quantidade > int.MaxValue - produto.QuantidadeEstoque) throw new ArgumentException("A quantidade ultrapassa o limite de estoque deste produto.");
 
         produto.QuantidadeEstoque += quantidade;
         await _repository.SalvarAsync();
