@@ -1,3 +1,4 @@
+using PiorEcommerceDoMundo.Api.Extensions;
 using PiorEcommerceDoMundo.Infrastructure;
 using PiorEcommerceDoMundo.Infrastructure.Data;
 using System.Text.Json.Serialization;
@@ -13,7 +14,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddInfrastructure(builder.Configuration);
-// Cada dev registra aqui o seu dominio com UMA linha, ex: builder.Services.AddProdutos();
+builder.Services.AddProdutos();
+// Cada dev registra aqui o seu dominio com UMA linha, ex: builder.Services.AddPedidos();
 
 var app = builder.Build();
 
