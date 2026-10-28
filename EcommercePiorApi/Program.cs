@@ -18,6 +18,10 @@ builder.Services.AddProdutos();
 builder.Services.AddPagamentos();
 // Cada dev registra aqui o seu dominio com UMA linha, ex: builder.Services.AddPedidos();
 
+builder.Services.AddPedidos();
+builder.Services.AddPagamentos();
+
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
