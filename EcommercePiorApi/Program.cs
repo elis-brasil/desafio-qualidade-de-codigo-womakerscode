@@ -15,9 +15,6 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddProdutos();
-builder.Services.AddPagamentos();
-// Cada dev registra aqui o seu dominio com UMA linha, ex: builder.Services.AddPedidos();
-
 builder.Services.AddPedidos();
 builder.Services.AddPagamentos();
 

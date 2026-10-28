@@ -19,6 +19,7 @@ public class PedidoService : IPedidoService
     private readonly IEstoqueService _estoqueService;
     private readonly ICalculadoraDesconto _calculadoraDesconto;
     private readonly IPedidoValidator _pedidoValidator;
+    private readonly IPagamentoService _pagamentoService;
     private readonly ILogger<PedidoService> _logger;
 
     public PedidoService(
@@ -27,6 +28,7 @@ public class PedidoService : IPedidoService
         IEstoqueService estoqueService,
         ICalculadoraDesconto calculadoraDesconto,
         IPedidoValidator pedidoValidator,
+        IPagamentoService pagamentoService,
         ILogger<PedidoService> logger)
     {
         _pedidoRepository = pedidoRepository;
@@ -34,6 +36,7 @@ public class PedidoService : IPedidoService
         _estoqueService = estoqueService;
         _calculadoraDesconto = calculadoraDesconto;
         _pedidoValidator = pedidoValidator;
+        _pagamentoService = pagamentoService;
         _logger = logger;
     }
 
@@ -108,36 +111,52 @@ public class PedidoService : IPedidoService
             Itens = itensPedido
         };
 
-        await _pedidoRepository.AdicionarAsync(pedido);
-        await _pedidoRepository.SalvarAsync();
+        // 6. Debitar os itens do estoque
+        var itensDebitados = new List<(int ProdutoId, int Quantidade)>();
 
-        // 6. Atualizar estoque com controle de rollback caso o pagamento falhe
-        var itensDebitaods = new List<(int ProdutoId, int Quantidade)>();
-        foreach (var item in request.Itens)
+        try
         {
-            await _estoqueService.DebitarAsync(item.ProdutoId, item.Quantidade);
-            itensDebitaods.Add((item.ProdutoId, item.Quantidade));
+            foreach (var item in request.Itens)
+            {
+                await _estoqueService.DebitarAsync(item.ProdutoId, item.Quantidade);
+
+                itensDebitados.Add((item.ProdutoId, item.Quantidade));
+            }
+        }
+        catch
+        {
+            await EstornarItensAsync(itensDebitados);
+            throw;
         }
 
         // 7. Processar pagamento
-        bool pagamentoAprovado = PagamentoMock.ProcessarPagamento(valorTotal, request.FormaPagamento);
+        bool pagamentoAprovado;
+
+        try
+        {
+            pagamentoAprovado = await _pagamentoService.ProcessarPagamentoAsync(valorTotal, request.FormaPagamento);
+        }
+        catch
+        {
+            await EstornarItensAsync(itensDebitados);
+            throw;
+        }
 
         if (!pagamentoAprovado)
         {
-            pedido.Status = StatusPedido.Falhou;
-            await _pedidoRepository.SalvarAsync();
+            await EstornarItensAsync(itensDebitados);
 
-            // Estorna o estoque debitado para corrigir o bug de falta de transação/estorno
-            foreach (var (produtoId, quantidade) in itensDebitaods)
-            {
-                await _estoqueService.EstornarAsync(produtoId, quantidade);
-            }
+            pedido.Status = StatusPedido.Falhou;
+
+            await _pedidoRepository.AdicionarAsync(pedido);
+            await _pedidoRepository.SalvarAsync();
 
             _logger.LogWarning("Pagamento recusado para o pedido {PedidoId}. Estoque estornado.", pedido.Id);
             throw new InvalidOperationException("Pagamento recusado.");
         }
 
         pedido.Status = StatusPedido.Pago;
+        await _pedidoRepository.AdicionarAsync(pedido);
         await _pedidoRepository.SalvarAsync();
 
         // 8. Logística 100% assíncrona (await ao invés do bloqueante .Result)
@@ -150,5 +169,57 @@ public class PedidoService : IPedidoService
             pedido.Id, codigoRastreio);
 
         return pedido.ToResponse();
+    }
+
+    public async Task<PedidoResponse> ReprocessarPagamentoAsync(int pedidoId)
+    {
+        var pedido = await _pedidoRepository.ObterPorIdAsync(pedidoId);
+
+        if (pedido == null) throw new KeyNotFoundException($"Pedido {pedidoId} não encontrado.");
+
+        if (pedido.Status != StatusPedido.Falhou) throw new InvalidOperationException("Somente pedidos que o pagamento falhou podem ser reprocessados.");
+
+        var itensDebitados = new List<(int ProdutoId, int Quantidade)>();
+
+        try
+        {
+            foreach (var item in pedido.Itens)
+            {
+                await _estoqueService.DebitarAsync(item.ProdutoId, item.Quantidade);
+                itensDebitados.Add((item.ProdutoId, item.Quantidade));
+            }
+
+            var pagamentoAprovado =
+                await _pagamentoService.ProcessarPagamentoAsync(pedido.ValorTotal, pedido.FormaPagamento);
+
+            if (!pagamentoAprovado)
+            {
+                _logger.LogWarning("O pagamento para o pedido {PedidoId} foi recusado novamente.", pedido.Id);
+                throw new InvalidOperationException("Pagamento recusado novamente.");
+            }
+
+            pedido.Status = StatusPedido.Pago;
+            await _pedidoRepository.SalvarAsync();
+
+            itensDebitados.Clear();
+        }
+        catch
+        {
+            if (itensDebitados.Count > 0) await EstornarItensAsync(itensDebitados);
+            throw;
+        }
+
+        _logger.LogInformation("Pagamento reprocessado com sucesso para o pedido {PedidoId}.", pedido.Id);
+
+        return pedido.ToResponse();
+    }
+
+    // Elimina a repetição dos laços de estorno
+    private async Task EstornarItensAsync(List<(int ProdutoId, int Quantidade)> itens)
+    {
+        foreach (var item in itens)
+        {
+            await _estoqueService.EstornarAsync(item.ProdutoId, item.Quantidade);
+        }
     }
 }
