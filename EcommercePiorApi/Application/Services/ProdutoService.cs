@@ -59,9 +59,12 @@ public class ProdutoService : IProdutoService
         produto.Nome = request.Nome;
         produto.Descricao = request.Descricao;
         produto.Preco = request.Preco;
-        produto.Ativo = request.Ativo;
+
+        // so altera Ativo quando o campo vier no request
+        if (request.Ativo.HasValue) produto.Ativo = request.Ativo.Value;
 
         await _repository.SalvarAsync();
+        _logger.LogInformation("Produto atualizado: {Nome} (Id {Id})", produto.Nome, produto.Id);
         return produto.ToResponse();
     }
 
@@ -70,6 +73,7 @@ public class ProdutoService : IProdutoService
         var produto = await BuscarOuFalharAsync(id);
         _repository.Remover(produto);
         await _repository.SalvarAsync();
+        _logger.LogInformation("Produto removido: {Nome} (Id {Id})", produto.Nome, id);
     }
 
     private async Task<Produto> BuscarOuFalharAsync(int id)

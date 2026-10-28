@@ -59,3 +59,15 @@ Accept: application/json
 ### 6. Buscar pedido por Id
 GET {{baseUrl}}/api/pedidos/1
 Accept: application/json
+
+### 7. Consultar estoque antes do pedido
+GET {{baseUrl}}/api/estoque
+Accept: application/json
+
+### 8. Reprocessar pagamento do pedido
+POST {{baseUrl}}/api/pagamentos/reprocessar/1
+Accept: application/json
+
+### 9. Consultar estoque depois do reprocessamento
+GET {{baseUrl}}/api/estoque
+Accept: application/json

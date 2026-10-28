@@ -27,6 +27,8 @@ public class EstoqueService : IEstoqueService
         ValidarQuantidade(quantidade);
         var produto = await BuscarOuFalharAsync(produtoId);
 
+        if (quantidade > int.MaxValue - produto.QuantidadeEstoque) throw new ArgumentException("A quantidade ultrapassa o limite de estoque deste produto.");
+
         produto.QuantidadeEstoque += quantidade;
         await _repository.SalvarAsync();
 
@@ -38,6 +40,8 @@ public class EstoqueService : IEstoqueService
     {
         ValidarQuantidade(quantidade);
         var produto = await BuscarOuFalharAsync(produtoId);
+
+        if (!produto.Ativo) throw new InvalidOperationException($"O produto {produto.Nome} está inativo.");
 
         if (produto.QuantidadeEstoque < quantidade)
             throw new InvalidOperationException($"Estoque insuficiente para {produto.Nome}.");
@@ -52,6 +56,8 @@ public class EstoqueService : IEstoqueService
     {
         ValidarQuantidade(quantidade);
         var produto = await BuscarOuFalharAsync(produtoId);
+
+        if (quantidade > int.MaxValue - produto.QuantidadeEstoque) throw new ArgumentException("A quantidade estornada ultrapassa o limite de estoque deste produto.");
 
         produto.QuantidadeEstoque += quantidade;
         await _repository.SalvarAsync();

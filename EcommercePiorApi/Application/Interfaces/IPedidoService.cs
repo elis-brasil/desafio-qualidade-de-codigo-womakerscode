@@ -7,4 +7,5 @@ public interface IPedidoService
     Task<PedidoResponse> CriarAsync(PedidoRequest request);
     Task<List<PedidoResponse>> ListarAsync();
     Task<PedidoResponse> ObterPorIdAsync(int id);
+    Task<PedidoResponse> ReprocessarPagamentoAsync(int pedidoId);
 }

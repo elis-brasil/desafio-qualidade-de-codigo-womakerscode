@@ -16,6 +16,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddProdutos();
 builder.Services.AddPedidos();
+builder.Services.AddPagamentos();
+
 
 var app = builder.Build();
 

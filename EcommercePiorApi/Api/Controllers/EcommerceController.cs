@@ -18,27 +18,6 @@ public class EcommerceController : ControllerBase
         _db = db;
     }
 
-    // ==================== PAGAMENTO ====================
-
-    [HttpPost("api/pagamentos/reprocessar/{pedidoId}")]
-    public IActionResult ReprocessarPagamento(int pedidoId)
-    {
-        var pedido = _db.Pedidos.Include(p => p.Itens).FirstOrDefault(p => p.Id == pedidoId);
-        if (pedido == null) return NotFound();
-
-        bool ok = PagamentoMock.ProcessarPagamento(pedido.ValorTotal, pedido.FormaPagamento);
-        if (!ok)
-        {
-            pedido.Status = StatusPedido.Falhou;
-            _db.SaveChanges();
-            return BadRequest("pagamento recusado novamente");
-        }
-
-        pedido.Status = StatusPedido.Pago;
-        _db.SaveChanges();
-        return Ok(pedido);
-    }
-
     // ==================== LOGISTICA ====================
 
     [HttpPost("api/logistica/reenviar/{pedidoId}")]
