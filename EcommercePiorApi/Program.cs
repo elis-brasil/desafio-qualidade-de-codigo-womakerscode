@@ -1,6 +1,8 @@
+using EcommercePiorApi.Api.Extensions;
 using PiorEcommerceDoMundo.Api.Extensions;
 using PiorEcommerceDoMundo.Infrastructure;
 using PiorEcommerceDoMundo.Infrastructure.Data;
+using PiorEcommerceDoMundo.Middlewares;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,9 +19,12 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddProdutos();
 builder.Services.AddPedidos();
 builder.Services.AddPagamentos();
+builder.Services.AddLogistica();
 
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 using (var scope = app.Services.CreateScope())
 {
